@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="app-token" content="portable">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.dictionaryapi.dev https://ssl.gstatic.com https://upload.wikimedia.org; img-src 'self' data:; media-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="theme-color" content="#255b46">
+  <title>ことのは — 毎日、ことばが根づく。</title>
+  <link rel="stylesheet" href="./style.css">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <script src="./seed-data.js" defer></script>
+  <script src="./local-engine.js" defer></script>
+  <script src="./dictionary-client.js" defer></script>
+  <script src="./material-client.js" defer></script>
+  <script src="./app.js" defer></script>
+  <script src="./extras.js" defer></script>
+</head>
+<body>
+  <section id="auth-screen" class="panel auth-panel"><h1>ことのは</h1><p id="auth-message" role="status">端末の学習データを読み込み中…</p></section>
+  <div class="shell" hidden>
+    <aside class="sidebar">
+      <a class="brand" href="./" aria-label="ことのは ホーム"><span class="brand-mark">葉</span><span>ことのは<small>YOUR DAILY WORD GARDEN</small></span></a>
+      <p class="side-caption">LEARNING SPACE</p>
+      <nav aria-label="メインメニュー">
+        <button class="nav active" data-page="learn"><span>◷</span> 今日の学習 <span class="nav-dot"></span></button>
+        <button class="nav" data-page="library"><span>▤</span> マイ単語帳</button>
+        <button class="nav" data-page="settings"><span>⚙</span> 設定・使い方</button>
+      </nav>
+      <div class="side-note"><span class="leaf-decoration">❧</span><strong>少しずつ、確かに。</strong><p>思い出すたびに、<br>ことばはあなたのものになる。</p><div class="side-line"></div><span>毎日の100問から、はじめよう。</span></div>
+      <div class="storage-note"><span class="status-dot"></span> このブラウザに自動保存<br><span id="account-name"></span></div>
+    </aside>
+    <main>
+      <header class="topbar"><span>あなたの学びを、今日もひとつ。</span><span id="date-label"></span></header>
+      <div id="notice" class="notice" role="status" hidden></div>
+      <div id="error" class="error" role="alert" hidden></div>
+      <section id="page-learn" class="page">
+        <div class="heading"><div><p class="eyebrow">A LITTLE EVERY DAY</p><h1>毎日、ことばが根づく。</h1><p class="muted">昨日のことばを思い出して、今日のことばに出会う。</p></div><span class="day-badge">DAILY PRACTICE</span></div>
+        <div class="stats">
+          <div class="stat"><span>今日の基本問題</span><div><strong id="stat-progress">0</strong><small id="stat-total">/ 100 問</small></div><div class="mini-track"><div id="stat-bar"></div></div></div>
+          <div class="stat"><span>今日が復習日</span><div><strong id="stat-due">0</strong><small>語</small></div><p>忘れかけた頃に、もう一度</p></div>
+          <div class="stat"><span>追加復習で残っている単語</span><div><strong id="stat-retry">0</strong><small>語</small></div><p>正解できるまで、あせらずに</p></div>
+        </div>
+        <div class="workspace">
+          <div class="study-column">
+            <div class="section-label"><h2>今日の学習</h2><span id="session-label">英単語 → 日本語</span></div>
+            <div id="study-card" class="study-card" aria-live="polite"></div>
+            <div class="study-footer"><span>↻ 間違えた単語は後半でもう一度</span><span>✓ 意味と品詞をチェック</span></div>
+          </div>
+          <aside class="right-column">
+            <section class="panel"><p class="eyebrow">KNOW IT. USE IT.</p><h2>覚えたつもりを見つける。</h2><label for="study-mode">次の学習の出題形式</label><select id="study-mode"><option value="auto">自動 · 理解→想起→例文</option><option value="en_ja">英語 → 日本語</option><option value="ja_en">日本語 → 英語</option><option value="usage" disabled>例文作成（この版では採点不可）</option></select><p class="small muted">自動では、前回の初回回答に応じて形式を選びます。英語→日本語で正解した語は、次回に逆向きで確認します。開始済みの問題には反映しません。</p></section>
+            <section class="panel"><p class="eyebrow">YOUR LEVEL</p><h2>ちょうどいい難しさで。</h2><label for="level">学ぶ難易度</label><select id="level"><option value="basic">初級 · 中学〜高校基礎</option><option value="standard">中級 · 大学受験・仕事</option><option value="advanced">上級 · 学術・高度な仕事</option></select><p id="level-count" class="muted small"></p><button id="fill" hidden class="button secondary full">＋ 単語を自動補充</button><p class="small muted">登録済みの教材から出題します。不足分は教材JSON・CSVで追加してください。開始済みの問題はそのまま続けられます。</p><div id="job" class="job" role="status" hidden></div></section>
+            <section class="panel add-panel" hidden><p class="eyebrow">MAKE IT YOURS</p><h2>気になることばを追加。</h2><form id="add-form"><label for="new-word">英単語・短い句</label><div class="input-row"><input id="new-word" placeholder="例：serendipity" maxlength="80" required autocomplete="off" spellcheck="false"><button class="button primary" type="submit" aria-label="単語を追加">＋</button></div></form><p class="small muted">意味、類義語との違い、語形、例文をまとめて保存します。</p><p id="add-result" class="small" role="status"></p></section>
+            <div class="connection"><span id="ai-dot" class="status-dot"></span><span id="ai-label">接続状況を確認中</span><button data-page="settings">設定 →</button></div>
+          </aside>
+        </div>
+      </section>
+      <section id="page-library" class="page" hidden>
+        <div class="heading"><div><p class="eyebrow">YOUR WORD COLLECTION</p><h1>マイ単語帳</h1><p class="muted">使い分けまで覚えて、使えることばに。</p></div><button id="export" class="button secondary">データを書き出す ↓</button></div>
+        <section class="panel"><h2>会話型AIで作った教材を取り込む</h2>
+          <p><a href="./material-prompt.txt" download>① 教材作成の命令文をダウンロード</a> · <a href="./material-example.json" download>完成例JSON</a></p>
+          <p class="small muted">命令文と単語一覧・CSVを会話型AIへ渡し、生成されたJSONを下で選んでください。このアプリからAIには接続しません。会話型AI側でも有料機能を使わないでください。</p>
+          <form id="material-form"><label for="material-file">② 教材JSON（2MB以下）</label><input id="material-file" type="file" accept=".json,application/json" required>
+          <label><input id="material-update" type="checkbox">同じ単語・品詞の教材を更新する（学習履歴は保持）</label>
+          <button class="button secondary" type="submit">③ 内容を検証・確認</button></form>
+          <div id="material-preview" role="status"></div><button id="material-save" class="button primary" hidden>④ この内容を保存</button>
+          <p class="small muted">未選択なら重複をスキップします。更新では教材の意味・解説・難易度を置換します。英語の正しさは自動検証できないため、保存前にファイルの内容も確認してください。学習データのバックアップJSONは教材とは別形式です。</p>
+        </section>
+        <details class="panel csv-panel"><summary>＋ CSVファイルから取り込む</summary>
+          <p class="small muted">英単語・意味・品詞があれば、AIなしで学習に使えます。英単語だけでも保存でき、会話型AIで補完して教材JSONを取り込めます。</p>
+          <form id="csv-form">
+            <label for="csv-file">CSVファイル（2MB・1000行まで）</label><input id="csv-file" type="file" accept=".csv,text/csv" required>
+            <div class="csv-options"><div><label for="csv-level">難易度の列がない場合</label><select id="csv-level"><option value="basic">初級</option><option value="standard">中級</option><option value="advanced">上級</option></select></div><div><label for="csv-encoding">文字コード</label><select id="csv-encoding"><option value="auto">自動（UTF-8 / Shift-JIS）</option><option value="utf-8-sig">UTF-8</option><option value="cp932">Shift-JIS（Excel）</option></select></div></div>
+            <div class="csv-actions"><button type="submit" class="button secondary">取り込み内容を確認</button><a class="small" href="./template.csv" download="kotonoha-template.csv">テンプレートをダウンロード ↓</a></div>
+          </form>
+          <p class="small muted">先頭行は列名です。word（英単語）は必須。meaning（意味）、pos（品詞）、level（難易度）、aliases（別解、| 区切り）、example（例文）、translation（和訳）は省略できます。同じ単語・品詞は重複登録せず、既存の解説と学習履歴を保持します。</p>
+          <div id="csv-preview" role="status" hidden></div><button id="csv-import" class="button primary" hidden disabled>この内容を保存する</button><p id="csv-result" class="small" role="status"></p>
+        </details>
+        <div class="library-controls"><label class="search-label" for="search">単語・意味を検索<input id="search" type="search" placeholder="単語や日本語の意味で検索"></label><label for="library-level">難易度<select id="library-level"><option value="all">すべて</option><option value="basic">初級</option><option value="standard">中級</option><option value="advanced">上級</option></select></label></div>
+        <label for="proficiency-filter">習得段階で絞り込む</label><select id="proficiency-filter"><option value="all">すべての段階</option><option value="receptive">覚えたつもり：理解語彙だが、まだ使用語彙ではない</option><option value="0">未習得</option><option value="1">見れば分かる</option><option value="2">意味を理解している</option><option value="3">自分で英単語を思い出せる</option><option value="4">例文の中で使える</option><option value="5">習得済み</option></select>
+        <p id="library-count" class="muted small"></p><div id="word-list" class="word-list"></div>
+      </section>
+      <section id="page-settings" class="page" hidden>
+        <section class="panel"><h2>完全バックアップ・端末間移行</h2>
+          <p><a href="./?local=1">このブラウザ内に保存する端末版を開く</a>（ログイン不要・自動同期なし）</p>
+          <p class="small muted">端末版では完全バックアップを読み込み、ブラウザ内で学習できます。最初のアクセスには配信元が必要です。オフライン利用はHTTPSまたはlocalhostで初回読み込み・保存が成功した場合に使えます。</p>
+          <p class="small muted">単語・学習履歴・未完了問題・設定・辞書キャッシュ・保存音声を1つのJSONにまとめます。パスワードは含みません。ファイルには学習内容が含まれるので安全に保管してください。</p>
+          <button id="backup-download" class="button primary">バックアップを書き出す</button>
+          <button id="backup-share" class="button secondary">保存済みバックアップを共有</button>
+          <button id="backup-recovery" class="button secondary">復元前バックアップを書き出す</button>
+          <form id="backup-form"><label for="backup-file">バックアップを読み込む（64MB以下）</label><input id="backup-file" type="file" accept=".json,application/json" required><button class="button secondary" type="submit">ファイルを検証</button></form>
+          <p id="backup-preview" role="status"></p><button id="backup-restore" class="button primary" hidden>現在のデータを置き換えて復元</button>
+        </section>
+        <div class="heading"><div><p class="eyebrow">A SPACE THAT FITS YOU</p><h1>設定・使い方</h1><p class="muted">あなたのペースで、長く続けられるように。</p></div></div>
+        <div class="settings-grid">
+          <section class="panel guide"><h2>6段階の習得度</h2><p>未習得 → 見れば分かる → 意味を理解している → 自分で英単語を思い出せる → 例文の中で使える → 習得済み</p><p>英語→日本語に初回正解すると「見れば分かる」、別の日にも正解すると「意味を理解している」。日本語→英語にも初回正解すると「自分で英単語を思い出せる」、自作の英文も正解すると「例文の中で使える」と判定します。</p><p>英語→日本語は正解、日本語→英語は不正解なら「理解語彙だが、まだ使用語彙ではない」と表示します。その場の再テストは習得段階を上げず、後日の初回回答で再確認します。</p><p>「習得済み」は、3形式それぞれで異なる日に2回以上の初回正解があり、直近2回が連続正解、最初の判定から7日以上が経過したときです。各形式の最新結果に応じて段階は下がることもあります。これはこのアプリの目安で、能力を完全に測定するものではありません。</p><p>自由な例文の自動採点はこの版では提供しません。未接続でも双方向の確認はできます。日本語→英語では登録語の原形を答え、他の類義語で代用しても対象語の想起成功とは数えません。正解・発音・例文は回答前に表示しません。</p><p>追加以前の履歴からは出題方向を推測せず、この機能追加後の初回回答から分類します。既存の復習日は保持します。</p></section>
+          <section class="panel guide"><h2>入力ミスは、一度だけ確認</h2><p>明らかなスペルミスや変換ミスが疑われる場合、採点前に「これは入力ミスですか？」と確認します。入力ミスなら回答を訂正でき、違う場合はそのまま不正解として記録します。</p><p>確認中は問題数や復習日を変更しません。訂正後も間違っている場合は、再確認せず不正解にして復習に回します。確認画面を閉じても、次回そこから再開できます。</p><p>品詞違い・否定・明らかな意味違いは確認対象外です。AI未接続では文字の重複や入れ替わりなどの限定的な検出、変換ミスの広い意味判定は行いません。判断しづらい回答は一度不正解になる場合があります。</p></section>
+          <section class="panel guide"><h2>発音と、関連語の出題間隔</h2><h3>音声は一度取得して保存</h3><p>「▶ 発音」を押すと保存済み音声を再生します。以後は保存した音声を再利用するので、AIトークンは使いません。発音・辞書ボタンを押した場合だけ無料辞書へ単語を送信します。音声がなければ端末内TTSを利用します。</p><p>音声が見つからない・通信できない場合も、保存済みの辞書リンクから発音を確認できます。辞書音声は語の代表的な発音です。品詞や意味によって発音が異なる語は、辞書で該当項目も確認してください。</p><h3>解説のヒントは、少し忘れてから</h3><p>解説や単語帳で見た類義語・関連語は、原則として他の問題を10問ほど挟んで出題します。候補が足りないときは可能な範囲で後ろへ回します。今日まだセットに入っていない関連語は、次のセットで優先度を下げ、他の語を先に選びます。翌日にはこの優先度を戻します。</p><p>この調整は学習履歴として保存します。復習日や正解数は変更せず、基本問題と追加復習を混ぜないため、再テストも最後まで続けられます。</p></section>
+          <section class="panel guide"><h2>有料APIを使わない教材方式</h2><p>有料API・クラウド保存・課金機能はありません。教材は「マイ単語帳」から読み込めます。電気代・通信費や、別途利用する会話型AIの契約はこのアプリの管理外です。</p><p>外出先からの自動同期は提供しません。データは使用中のブラウザ内に保存します。ログインはありません。自由な英文の採点がないため「例文の中で使える」「習得済み」の新規自動判定はできません。</p></section>
+          <section class="panel guide"><h2>学習のしくみ</h2><h3>1日100問 ＋ できるまで復習</h3><p>期限を迎えた復習、新しい単語、次回復習日が近い単語の順に最大100語を選びます。100語に満たない場合は登録済みの語数で開始します。間違えた語は基本問題の後に、正解まで繰り返します。</p><h3>忘れかけた頃に、もう一度</h3><p>日をまたぐ連続正解で復習間隔を1→3→7→14→30→60→120→240→365日と延ばします。間違えた語は、再テストで正解しても翌日に復習します。忘却曲線を参考にした簡易方式で、個人の記憶を測定するものではありません。</p><h3>意味だけでなく、品詞も</h3><p>例文での意味と品詞を答えてください。たとえば improve は「動詞・改善する」が正解。「名詞・改善」や、動詞を選んでも「改善」だけの回答は不正解です。登録済みの言い換えは認めますが、単に文字が似ているだけでは正解にしません。</p><h3>中断しても大丈夫</h3><p>途中経過と解説表示は自動保存します。日付は日本時間の0時に切り替わります。前日の問題が残っている場合は、それを終えてから今日の学習を始めます。</p><h3>AI未接続のとき</h3><p>各難易度12語、計36語のサンプルで学べます。品詞と登録済みの別解による採点が動作します。任意の単語・別解は教材JSONやCSVで追加します。未登録の言い換えを意味から推測する採点は行いません。</p></section>
+        </div>
+      </section>
+      <p class="small muted">プライバシー：学習データ・回答・バックアップはGitHubへアップロードしません。辞書取得時のみ対象の単語を無料辞書へ送ります。GitHubはサイトへの接続情報を受け取ります。ブラウザのデータ削除や端末故障に備え、設定からバックアップしてください。</p>
+      <footer>ことのは <span>·</span> 毎日の小さな積み重ねが、大きな語彙になる。</footer>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,52 @@
+{
+  "format": "kotonoha-materials-v1",
+  "words": [
+    {
+      "word": "improve",
+      "level": "basic",
+      "pos": "動詞",
+      "meaning": "改善する",
+      "aliases": [
+        "良くする",
+        "向上させる",
+        "改良する"
+      ],
+      "example": "Daily practice can improve your speaking skills over time.",
+      "translation": "毎日の練習で、時間とともに話す力を向上させることができます。",
+      "synonyms": [
+        {
+          "word": "enhance",
+          "difference": "improveは悪い点を直す場合にも、全体をより良くする場合にも使えます。enhanceは既にある魅力・品質・効果をさらに高める意味で、やや硬い表現です。どちらも目的語を取れますが、improveにはThe situation improved.のような自動詞用法があり、enhanceは通常、何を高めるのかという目的語を伴います。",
+          "example": "The new lighting enhances the beauty of the paintings.",
+          "translation": "新しい照明が絵画の美しさをさらに引き立てています。"
+        }
+      ],
+      "forms": [
+        {
+          "word": "improves",
+          "description": "動詞・三人称単数現在形。"
+        },
+        {
+          "word": "improved",
+          "description": "動詞・過去形および過去分詞。"
+        },
+        {
+          "word": "improving",
+          "description": "動詞・現在分詞および動名詞。"
+        },
+        {
+          "word": "improvement",
+          "description": "名詞・改善、向上。過程は不可算、個別の改善点は可算として使える。"
+        }
+      ],
+      "collocations": [
+        {
+          "phrase": "improve performance",
+          "meaning": "成績や性能を向上させる",
+          "example": "Regular feedback helps employees improve their performance at work.",
+          "translation": "定期的なフィードバックは、従業員が仕事の成果を向上させるのに役立ちます。"
+        }
+      ]
+    }
+  ]
+}
