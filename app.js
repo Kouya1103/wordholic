@@ -24,12 +24,12 @@ $("#material-form").addEventListener("submit", event => {
   busy(event.target.querySelector("button"), async () => {
     resetMaterial();
     const file = $("#material-file").files[0];
-    if (!file || file.size > 2 * 1024 * 1024) throw new Error("2MB以下の教材JSONを選んでください。");
+    if (!file || file.size > 64 * 1024 * 1024) throw new Error("64MB以下の教材JSONを選んでください。");
     const selected = file;
     const update = $("#material-update").checked;
     const bytes = new Uint8Array(await file.arrayBuffer());
     let binary = "";
-    for (const byte of bytes) binary += String.fromCharCode(byte);
+    for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
     const payload = {file: btoa(binary), update};
     const result = await api("materials/preview", payload);
     if ($("#material-file").files[0] !== selected || $("#material-update").checked !== update) return;
@@ -320,7 +320,7 @@ $("#csv-form").addEventListener("submit", event => {
   busy(event.target.querySelector("button"), async () => {
     clearCSVPreview();
     const file = $("#csv-file").files[0];
-    if (!file || !file.size || file.size > 2 * 1024 * 1024) throw new Error("空でない2MB以下のCSVファイルを選んでください。");
+    if (!file || !file.size || file.size > 64 * 1024 * 1024) throw new Error("空でない64MB以下のCSVファイルを選んでください。");
     const level = $("#csv-level").value;
     const encoding = $("#csv-encoding").value;
     const bytes = new Uint8Array(await file.arrayBuffer());

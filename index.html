@@ -72,7 +72,7 @@
           <p class="small muted">全難易度・CSV補完待ちを対象に、例文・和訳・類義語・語形・コロケーション・ニュアンスの空欄を抽出します。該当する類義語・語形がない語も再び対象になります。学習履歴・アカウント情報は含めません。単語一覧は含むので内容を確認し、ご自身で会話型AIに渡してください。返されたJSONは「同じ単語・品詞の教材を更新する」を選んで読み込みます。</p>
           <p><a href="./material-prompt.txt" download>① 教材作成の命令文をダウンロード</a> · <a href="./material-example.json" download>完成例JSON</a></p>
           <p class="small muted">命令文と単語一覧・CSVを会話型AIへ渡し、生成されたJSONを下で選んでください。このアプリからAIには接続しません。会話型AI側でも有料機能を使わないでください。</p>
-          <form id="material-form"><label for="material-file">② 教材JSON（2MB以下）</label><input id="material-file" type="file" accept=".json,application/json" required>
+          <form id="material-form"><label for="material-file">② 教材JSON（64MB以下）</label><input id="material-file" type="file" accept=".json,application/json" required>
           <label><input id="material-update" type="checkbox">同じ単語・品詞の教材を更新する（学習履歴は保持）</label>
           <button class="button secondary" type="submit">③ 内容を検証・確認</button></form>
           <div id="material-preview" role="status"></div><button id="material-save" class="button primary" hidden>④ この内容を保存</button>
@@ -81,7 +81,7 @@
         <details class="panel csv-panel"><summary>＋ CSVファイルから取り込む</summary>
           <p class="small muted">英単語・意味・品詞があれば、AIなしで学習に使えます。英単語だけでも保存でき、会話型AIで補完して教材JSONを取り込めます。</p>
           <form id="csv-form">
-            <label for="csv-file">CSVファイル（2MB・1000行まで）</label><input id="csv-file" type="file" accept=".csv,text/csv" required>
+            <label for="csv-file">CSVファイル（64MB・1000行まで）</label><input id="csv-file" type="file" accept=".csv,text/csv" required>
             <div class="csv-options"><div><label for="csv-level">難易度の列がない場合</label><select id="csv-level"><option value="basic">初級</option><option value="standard">中級</option><option value="advanced">上級</option></select></div><div><label for="csv-encoding">文字コード</label><select id="csv-encoding"><option value="auto">自動（UTF-8 / Shift-JIS）</option><option value="utf-8-sig">UTF-8</option><option value="cp932">Shift-JIS（Excel）</option></select></div></div>
             <div class="csv-actions"><button type="submit" class="button secondary">取り込み内容を確認</button><a class="small" href="./template.csv" download="kotonoha-template.csv">テンプレートをダウンロード ↓</a></div>
           </form>

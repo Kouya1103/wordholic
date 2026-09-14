@@ -9,13 +9,14 @@
   function parseCSV(text){const rows=[];let row=[],cell="",quoted=false,closed=false;
     for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++;}else{quoted=false;closed=true;}}else cell+=c;continue;}
       if(c==='"'){if(cell||closed)fail("CSVの引用符が不正です。");quoted=true;}
-      else if(c===","||c==="\n"||c==="\r"){row.push(cell);cell="";closed=false;if(c!==","){if(c==="\r"&&text[i+1]==="\n")i++;rows.push(row);row=[];}}
+      else if(c===","||c==="\n"||c==="\r"){row.push(cell);cell="";closed=false;if(c!==","){if(c==="\r"&&text[i+1]==="\n")i++;if(!rows.length||row.some(s=>s.trim()))rows.push(row);if(rows.length>1001)fail("1回の取り込みは1000件までです。");row=[];}}
       else {if(closed)fail("閉じ引用符の後に不正な文字があります。");cell+=c;}}
     if(quoted)fail("CSVの引用符が閉じられていません。");if(cell||row.length||closed){row.push(cell);rows.push(row);}return rows;}
   function register(t,w){for(const word of new Set([w.word,...w.synonyms.map(x=>x.word),...w.forms.map(x=>x.word)].map(s=>s.trim().toLowerCase()).filter(s=>/^[a-z][a-z '\-]{0,79}$/.test(s))))if(!t.pronunciations.some(r=>r.word===word))t.pronunciations.push({word,data:JSON.stringify({word,dictionary_url:`https://en.wiktionary.org/wiki/${encodeURIComponent(word)}#English`,status:"unfetched",phonetic:"",audio_source:"",source_page:"",license_name:"",license_url:"",checked_at:"",message:""}),audio:null,mime:null});}
   async function prepare(path,data){
-    if(typeof data.file!=="string"||data.file.length>3*1024*1024)fail("2MB以下の教材ファイルを選んでください。");
-    const bytes=Uint8Array.from(atob(data.file),c=>c.charCodeAt(0));if(!bytes.length||bytes.length>2*1024*1024)fail("空でない2MB以下のファイルを選んでください。");
+    if(typeof data.file!=="string"||data.file.length>4*Math.ceil(64*1024*1024/3))fail("64MB以下の教材ファイルを選んでください。");
+    const binary=atob(data.file);if(!binary.length||binary.length>64*1024*1024)fail("空でない64MB以下のファイルを選んでください。");
+    const bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
     const csv=path.startsWith("csv/");let entries=[];
     if(csv){let text;try{text=new TextDecoder(data.encoding==="cp932"?"shift_jis":"utf-8",{fatal:true}).decode(bytes);}catch(e){if(data.encoding!=="auto")throw e;text=new TextDecoder("shift_jis",{fatal:true}).decode(bytes);}
       const rows=parseCSV(text.replace(/^\uFEFF/,"")),names=(rows.shift()||[]).map(h=>headers[h.trim().toLowerCase()]||h.trim().toLowerCase());
