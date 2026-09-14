@@ -16,6 +16,7 @@
   const wordData = row => JSON.parse(row.data);
   const fail = message => { throw new Error(message); };
   function validWord(w, draft = false) {
+    for (const key of ["nuance", "mnemonic"]) if (w && key in w && (typeof w[key] !== "string" || w[key].length > 2000)) fail("ニュアンス・覚え方は2000文字以下の文字列です。");
     if (!w || !/^[a-zA-Z][a-zA-Z '\-]{0,79}$/.test(w.word) || (!draft && !pos.includes(w.pos))) fail("単語・品詞の形式が不正です。");
     for (const key of ["meaning", "example", "translation"]) if (typeof w[key] !== "string" || w[key].length > 2000 || (!draft && key === "meaning" && !w[key].trim())) fail("意味・例文の形式が不正です。");
     if (!Array.isArray(w.aliases) || !w.aliases.every(a => typeof a === "string" && a.length > 0 && a.length < 200)) fail("別解の形式が不正です。");

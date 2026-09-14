@@ -24,7 +24,7 @@
         for(const key of ["aliases","synonyms","forms","collocations"]){const value=v[key]||"";w[key]=value.startsWith("[")?JSON.parse(value):key==="aliases"?value.split("|").map(s=>s.trim()).filter(Boolean):[];if(value&&key!=="aliases"&&!value.startsWith("["))fail(`${key}はJSON配列で指定してください。`);}
         KotonohaLocal.validWord({...w,pos:w.pos||"名詞",meaning:w.meaning||"未設定"});const level=levels[v.level||data.level||"basic"];if(!level)fail("難易度が不正です。");entries.push({w,level,line:i+2});}
     }else{const p=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes));if(p.format!=="kotonoha-materials-v1"||Object.keys(p).sort().join()!=="format,words"||!Array.isArray(p.words))fail("教材JSONの形式が不正です。");const seen=new Set();
-      entries=p.words.map(w=>{if(!w||Object.keys(w).sort().join()!==fields.slice().sort().join())fail("教材の必須項目を確認してください。");KotonohaLocal.validWord(w);if(!levels[w.level]||!w.example.trim()||!w.translation.trim()||!w.collocations.length||w.aliases.length>20)fail("教材の難易度・例文・コロケーションを確認してください。");w={...w,word:w.word.trim().toLowerCase()};const key=w.word+":"+w.pos;if(seen.has(key))fail("ファイル内で単語・品詞が重複しています。");seen.add(key);return {w,level:w.level};});}
+      entries=p.words.map(w=>{if(!w||!fields.every(k=>Object.hasOwn(w,k))||Object.keys(w).some(k=>![...fields,"nuance","mnemonic"].includes(k)))fail("教材の必須項目を確認してください。");KotonohaLocal.validWord(w);if(!levels[w.level]||!w.example.trim()||!w.translation.trim()||!w.collocations.length||w.aliases.length>20)fail("教材の難易度・例文・コロケーションを確認してください。");w={...w,word:w.word.trim().toLowerCase()};const key=w.word+":"+w.pos;if(seen.has(key))fail("ファイル内で単語・品詞が重複しています。");seen.add(key);return {w,level:w.level};});}
     if(!entries.length||entries.length>1000)fail("1回の取り込みは1〜1000件です。");
     for(const e of entries){e.id=await hash(e.w.word+":"+e.w.pos);e.draft=await hash(e.level+JSON.stringify(e.w),24);}
     return state=>{const t=state.backup.tables,engine=new KotonohaLocal.Engine(state.backup),s=engine.active(),preview=path.endsWith("preview"),result={valid:true,added:0,pending:0,updated:0,skipped:0,drafts_completed:0,total:entries.length,rows:[],entries:[],message:preview?"確認のみ。まだ保存していません。":"教材を保存しました。"};
@@ -38,5 +38,5 @@
         result[status]++;result.entries.push({word:e.w.word,pos:e.w.pos,meaning:e.w.meaning,action:{added:"追加",updated:"更新",skipped:"スキップ",pending:"補完待ち"}[status]});if(result.rows.length<20)result.rows.push({line:e.line,word:e.w.word,pos:e.w.pos,meaning:e.w.meaning,status});}
       return result;};
   }
-  globalThis.KotonohaMaterials={prepare,parseCSV};
+  globalThis.KotonohaMaterials={prepare,parseCSV,hash,register};
 })();

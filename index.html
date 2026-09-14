@@ -15,6 +15,7 @@
   <script src="./local-engine.js" defer></script>
   <script src="./dictionary-client.js" defer></script>
   <script src="./material-client.js" defer></script>
+  <script src="./word-tools.js" defer></script>
   <script src="./app.js" defer></script>
   <script src="./extras.js" defer></script>
 </head>
@@ -59,7 +60,16 @@
       </section>
       <section id="page-library" class="page" hidden>
         <div class="heading"><div><p class="eyebrow">YOUR WORD COLLECTION</p><h1>マイ単語帳</h1><p class="muted">使い分けまで覚えて、使えることばに。</p></div><button id="export" class="button secondary">データを書き出す ↓</button></div>
+        <section class="panel" id="single-panel"><h2>1語ずつ追加する</h2>
+          <form id="single-search"><label for="single-language">入力する言語</label><select id="single-language"><option value="ja">日本語 → 英語候補</option><option value="en">英語 → 日本語の意味</option></select><label for="single-query">検索することば</label><input id="single-query" required maxlength="80" placeholder="例：改善する" autocomplete="off"><button class="button secondary" type="submit">候補を探す</button></form>
+          <p class="small muted">日本語検索は同梱のEJDict-hand（CC0）を端末内で検索します。候補の語義と品詞を確認してください。保存時に英単語をFree Dictionary APIへ送り、定義・類義語・発音を取得します。取得できない情報は会話型AI用に書き出せます。<a href="./ejdict-license.txt">辞書の出典・ライセンス</a></p>
+          <label for="single-candidates">英語候補（最大30件）</label><select id="single-candidates"><option value="">検索してください</option></select><p id="single-gloss" class="small"></p>
+          <form id="single-save"><label for="single-word">登録する英語</label><input id="single-word" required maxlength="80" pattern="[a-zA-Z][a-zA-Z '\-]{0,79}"><label for="single-pos">この意味での品詞（要確認）</label><select id="single-pos" required><option value="">選択してください</option><option>名詞</option><option>動詞</option><option>形容詞</option><option>副詞</option><option>前置詞</option><option>接続詞</option><option>代名詞</option><option>間投詞</option></select><label for="single-meaning">学習の正解にする日本語の意味（1つの語義）</label><input id="single-meaning" required maxlength="2000"><label for="single-level">難易度</label><select id="single-level"><option value="basic">初級</option><option value="standard">中級</option><option value="advanced">上級</option></select><button class="button primary" type="submit">確認して保存・辞書で補完</button></form>
+          <p id="single-status" role="status"></p><div id="single-dictionary"></div>
+        </section>
         <section class="panel"><h2>会話型AIで作った教材を取り込む</h2>
+          <button id="enrichment-download" class="button secondary">不足している解説＋AIへの命令文をダウンロード</button><p id="enrichment-status" role="status"></p>
+          <p class="small muted">全難易度・CSV補完待ちを対象に、例文・和訳・類義語・語形・コロケーション・ニュアンスの空欄を抽出します。該当する類義語・語形がない語も再び対象になります。学習履歴・アカウント情報は含めません。単語一覧は含むので内容を確認し、ご自身で会話型AIに渡してください。返されたJSONは「同じ単語・品詞の教材を更新する」を選んで読み込みます。</p>
           <p><a href="./material-prompt.txt" download>① 教材作成の命令文をダウンロード</a> · <a href="./material-example.json" download>完成例JSON</a></p>
           <p class="small muted">命令文と単語一覧・CSVを会話型AIへ渡し、生成されたJSONを下で選んでください。このアプリからAIには接続しません。会話型AI側でも有料機能を使わないでください。</p>
           <form id="material-form"><label for="material-file">② 教材JSON（2MB以下）</label><input id="material-file" type="file" accept=".json,application/json" required>
