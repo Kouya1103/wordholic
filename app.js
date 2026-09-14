@@ -183,11 +183,23 @@ function renderStudy() {
   }
   if (s.feedback) {
     const f = s.feedback;
-    card.innerHTML = `<div class="feedback-head"><span class="result-icon ${f.correct ? "" : "wrong"}">${f.correct ? "✓" : "↻"}</span><div><h2>${f.correct ? "正解です。" : "あとで、もう一度。"}</h2><small>${escapeHTML(f.method)}</small></div></div>
+    card.innerHTML = `<div class="feedback-actions"><button id="next" class="button primary">${s.done ? "学習結果を見る" : "次の問題へ"} →</button><div class="grade-actions"><button id="mark-correct" class="button secondary" ${!f.can_override || f.correct ? "disabled" : ""}>正解にする</button><button id="mark-wrong" class="button secondary" ${!f.can_override || !f.correct ? "disabled" : ""}>不正解にする</button></div></div>
+      <div class="feedback-head"><span class="result-icon ${f.correct ? "" : "wrong"}">${f.correct ? "✓" : "↻"}</span><div><h2>${f.correct ? "正解です。" : "あとで、もう一度。"}</h2><small>${escapeHTML(f.method)}</small></div></div>
       <p class="feedback-word" lang="en">${escapeHTML(f.word.word)}</p><p class="meaning"><span class="pill">${escapeHTML(f.word.pos)}</span>${escapeHTML(f.word.meaning)}</p>
-      <p class="small muted">あなたの回答：${escapeHTML(f.selected_pos || "未選択")} · ${escapeHTML(f.answer || "わからない")}</p>${f.original_answer ? `<p class="small muted">確認前の回答：${escapeHTML(f.original_answer)}</p>` : ""}<p class="feedback-reason">${escapeHTML(f.reason)}</p>
-      ${proficiencyHTML(f.proficiency)}${notesHTML(f.word, f.word_id)}<p class="small muted">解説：${escapeHTML(f.source)}</p><p class="small muted">ここで見た類義語・関連語は、原則10問ほど間隔を空けます。候補が少ない場合は可能な範囲で後ろへ回します。</p>
-      <div class="next-row"><small>次の復習：${escapeHTML(f.next_due)}</small><button id="next" class="button primary">${s.done ? "学習結果を見る" : "次の問題へ"} →</button></div>`;
+      <p class="small muted">あなたの回答：${escapeHTML(f.answer || "わからない")}</p>${f.original_answer ? `<p class="small muted">確認前の回答：${escapeHTML(f.original_answer)}</p>` : ""}<p class="feedback-reason">${escapeHTML(f.reason)}</p><p class="small muted">次の復習：${escapeHTML(f.next_due)}</p>
+      ${!f.can_override ? '<p class="small muted">旧版で採点したこの回答は変更できません。次の回答から判定変更を利用できます。</p>' : ""}
+      ${notesHTML(f.word, f.word_id)}<p class="small muted">解説：${escapeHTML(f.source)}</p><p class="small muted">ここで見た類義語・関連語は、原則10問ほど間隔を空けます。候補が少ない場合は可能な範囲で後ろへ回します。</p>`;
+    for (const [id, correct] of [["#mark-correct", true], ["#mark-wrong", false]]) {
+      $(id).addEventListener("click", async event => {
+        if (!window.confirm(`この回答を${correct ? "正解" : "不正解"}に変更しますか？学習履歴・習得段階・復習予定と再出題にも反映します。`)) return;
+        const buttons = Array.from(card.querySelectorAll(".feedback-actions button"));
+        await busy(event.currentTarget, async () => {
+          buttons.forEach(b => { b.disabled = true; });
+          try { await api("answer/override", {token:f.token, revision:f.revision, correct, confirm:true}); }
+          finally { sessionSnapshot = null; await refresh(); }
+        }, "変更中…");
+      });
+    }
     $("#next").addEventListener("click", event => busy(event.currentTarget, async () => {
       await api("next", {token: f.token});
       await refresh();
@@ -206,32 +218,30 @@ function renderStudy() {
   const answerLabel = mode === "en_ja" ? "日本語の意味" : mode === "ja_en" ? "英単語（原形）" : "自分で作った英文";
   const help = mode === "ja_en" ? `単語帳に登録した英単語を思い出してください（${q.letter_count}文字・${q.pos}）。`
     : mode === "usage" ? `「${q.meaning}」の意味・${q.pos}として、この単語を使った英文を1つ作ってください。`
-    : q.example ? "この例文での品詞と、日本語の意味を答えてください。" : "CSVに登録した意味と品詞を答えてください（例文未登録）。";
+    : q.example ? "この例文での日本語の意味を答えてください。" : "登録した日本語の意味を答えてください。";
   card.innerHTML = `<div class="question-top"><span class="pill">${escapeHTML(state.modes?.[mode] || "英語 → 日本語")}${s.retry ? " · 再テスト" : ""}</span><span>${s.retry ? `追加復習 ${s.attempts - s.total + 1} 問目` : `${s.base_done + 1} / ${s.total}`}</span></div>
     <div class="word-prompt"><h2 lang="${mode === "ja_en" ? "ja" : "en"}">${escapeHTML(mode === "ja_en" ? q.meaning : q.word)}</h2>${mode === "en_ja" ? `<p lang="en">${escapeHTML(q.example)}</p>${pronunciationHTML(q.word)}` : ""}</div>
     <p class="prompt-help">${escapeHTML(help)}</p>
-    <form id="answer-form"><div class="answer-fields"><div><label for="answer-pos">品詞</label><select id="answer-pos" required ${mode !== "en_ja" ? "disabled" : ""}><option value="">選択する</option>${state.pos.map(p => `<option ${p === q.pos ? "selected" : ""}>${escapeHTML(p)}</option>`).join("")}</select></div><div><label for="answer-text">${answerLabel}</label><input id="answer-text" placeholder="${mode === "en_ja" ? "意味を入力してください" : mode === "ja_en" ? "英単語を入力してください" : "例文を英語で入力してください"}" maxlength="300" autocomplete="off" spellcheck="false" required></div></div><div class="answer-actions"><button id="skip" class="text-button" type="button">わからない・解説を見る</button><button id="answer-submit" class="button primary" type="submit">答え合わせ →</button></div></form>`;
+    <form id="answer-form"><label for="answer-text">${answerLabel}</label><input id="answer-text" placeholder="${mode === "en_ja" ? "意味を入力してください" : mode === "ja_en" ? "英単語を入力してください" : "例文を英語で入力してください"}" maxlength="300" autocomplete="off" spellcheck="false" required><div class="answer-actions"><button id="skip" class="text-button" type="button">わからない・解説を見る</button><button id="answer-submit" class="button primary" type="submit">答え合わせ →</button></div></form>`;
   const submitAnswer = async (skip) => {
     const button = $(skip ? "#skip" : "#answer-submit");
     const other = $(skip ? "#answer-submit" : "#skip");
-    const payload = {token: q.token, pos: $("#answer-pos").value, answer: $("#answer-text").value, skip};
+    const payload = {token: q.token, answer: $("#answer-text").value, skip};
     await busy(button, async () => {
       other.disabled = true;
-      $("#answer-pos").disabled = true;
       $("#answer-text").disabled = true;
       try {
         await api("answer", payload);
         await refresh();
       } finally {
         other.disabled = false;
-        if ($("#answer-pos")) $("#answer-pos").disabled = mode !== "en_ja";
         if ($("#answer-text")) $("#answer-text").disabled = false;
       }
     }, "採点中…");
   };
   $("#answer-form").addEventListener("submit", event => { event.preventDefault(); submitAnswer(false); });
   $("#skip").addEventListener("click", () => submitAnswer(true));
-  $(mode === "en_ja" ? "#answer-pos" : "#answer-text").focus({preventScroll: true});
+  $("#answer-text").focus({preventScroll: true});
 }
 
 function render() {

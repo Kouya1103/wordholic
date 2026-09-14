@@ -118,6 +118,7 @@
       if(s.feedback){if(s.feedback.token===data.token)return s.feedback;fail("解説を確認して次へ進んでください。");}
       if(data.token!==this.token(s)||s.cursor>=s.queue.length)fail("問題が更新されています。画面を再読み込みしてください。");
       const row=this.t.words.find(r=>r.id===s.queue[s.cursor]),w=wordData(row),mode=s.modes?.[row.id]||"en_ja",pending=s.typo_check,action=data.typo_action;
+      data={...data,pos:data.pos ?? pending?.pos ?? w.pos};
       if(action&&!['correct','wrong'].includes(action))fail("確認方法が不正です。");
       if(pending&&!action)return pending;if(action&&!pending)fail("入力ミスの確認はありません。");if(pending&&data.pos!==pending.pos)fail("訂正では品詞を変更できません。");
       let answer=String(data.answer||"").trim();if(action==="wrong")answer=pending.answer;
@@ -128,20 +129,44 @@
       if(action==="wrong")correct=false;
       if(!correct&&!data.skip&&data.pos===w.pos&&!pending&&obvious(answer,accepted)){s.typo_check={needs_confirmation:true,token:data.token,answer,pos:data.pos,message:"これはスペルミス・変換ミスなどの入力ミスですか？一度だけ訂正できます。"};this.save(s);return s.typo_check;}
       s.typo_check=null;
-      let next_due;
-      if(correct){if(!s.mastered.includes(row.id))s.mastered.push(row.id);if(s.cursor<s.base.length)s.first_correct++;row.streak=s.failed.includes(row.id)?1:Math.min(row.streak+1,intervals.length);row.interval=intervals[row.streak-1];row.due=after(this.day,row.interval);row.last_seen=this.day;next_due=row.due;}
-      else{s.queue.push(row.id);if(!s.failed.includes(row.id)){s.failed.push(row.id);row.streak=0;row.interval=1;row.due=after(this.day,1);row.last_seen=this.day;row.lapses++;}next_due="この学習の後半で再出題・翌日にも復習";}
+      s.answer_undo={day:this.day,cursor:s.cursor,queue:s.queue.slice(),failed:s.failed.slice(),mastered:s.mastered.slice(),first_correct:s.first_correct,
+        progress:Object.fromEntries(["streak","interval","due","last_seen","lapses"].map(k=>[k,row[k]]))};
+      const next_due=this.applyOutcome(s,row,correct,this.day,s.cursor);
       const first=s.cursor<s.base.length&&!this.t.assessments.some(r=>r.word_id===row.id&&r.mode===mode&&r.day===this.day&&r.first_attempt);
       this.t.assessments.push({id:this.t.assessments.reduce((n,r)=>Math.max(n,r.id),0)+1,word_id:row.id,mode,day:this.day,correct:Number(correct),first_attempt:Number(first),answer,session_day:s.day,cursor:s.cursor});
+      s.answer_undo.assessment_id=this.t.assessments.at(-1).id;
       s.cursor++;this.expose(w,s);
-      s.feedback={correct,reason:correct?"品詞と登録済みの回答が合っています。":data.pos!==w.pos?"品詞が違います。":"登録済みの意味・別解とは一致しませんでした。",method:"端末内採点",next_due,token:data.token,word:w,word_id:row.id,mode,proficiency:this.profile(row.id),answer,selected_pos:data.pos||"",source:row.source};
+      s.feedback={correct,reason:correct?"登録済みの回答と一致しました。":data.pos!==w.pos?"品詞が違います。":"登録済みの意味・別解とは一致しませんでした。",method:"端末内採点",next_due,token:data.token,word:w,word_id:row.id,mode,proficiency:this.profile(row.id),answer,selected_pos:data.pos||"",source:row.source,can_override:true,revision:0};
       if(pending)s.feedback.original_answer=pending.answer;this.save(s);return s.feedback;
+    }
+    applyOutcome(s,row,correct,day,cursor) {
+      if(correct){if(!s.mastered.includes(row.id))s.mastered.push(row.id);if(cursor<s.base.length)s.first_correct++;row.streak=s.failed.includes(row.id)?1:Math.min(row.streak+1,intervals.length);row.interval=intervals[row.streak-1];row.due=after(day,row.interval);row.last_seen=day;return row.due;}
+      s.queue.push(row.id);if(!s.failed.includes(row.id)){s.failed.push(row.id);row.streak=0;row.interval=1;row.due=after(day,1);row.last_seen=day;row.lapses++;}
+      return "この学習の後半で再出題・翌日にも復習";
+    }
+    override(data) {
+      const s=this.active(),f=s?.feedback,u=s?.answer_undo;
+      if(data.confirm!==true||typeof data.correct!=="boolean")fail("判定変更の確認が必要です。");
+      if(!f||f.token!==data.token||data.revision!==f.revision)fail("回答が更新されています。画面を確認してください。");
+      if(!u||!f.can_override)fail("旧版で採点した回答は変更できません。次の回答から利用できます。");
+      const row=this.t.words.find(r=>r.id===f.word_id),a=this.t.assessments.find(r=>r.id===u.assessment_id);
+      const ids=new Set(this.t.words.map(r=>r.id));
+      if(!row||!a||a.word_id!==row.id||a.session_day!==s.day||a.cursor!==s.cursor-1||u.cursor!==s.cursor-1||u.day!==a.day||!/^\d{4}-\d\d-\d\d$/.test(u.day))fail("変更元の回答記録を確認できません。");
+      if(!["queue","failed","mastered"].every(k=>Array.isArray(u[k])&&u[k].every(id=>ids.has(id)))||u.queue[u.cursor]!==row.id||!Number.isInteger(u.first_correct)||u.first_correct<0||u.first_correct>s.base.length)fail("変更元の進捗が不正です。");
+      const p=u.progress;if(!p||!["streak","interval","lapses"].every(k=>Number.isInteger(p[k])&&p[k]>=0)||!["due","last_seen"].every(k=>p[k]===null||/^\d{4}-\d\d-\d\d$/.test(p[k])))fail("変更元の復習情報が不正です。");
+      if(f.correct===data.correct)return f;
+      for(const k of ["streak","interval","due","last_seen","lapses"])row[k]=p[k];
+      for(const k of ["queue","failed","mastered"])s[k]=u[k].slice();s.first_correct=u.first_correct;
+      f.next_due=this.applyOutcome(s,row,data.correct,u.day,u.cursor);a.correct=Number(data.correct);
+      f.original_correct ??= f.correct;f.correct=data.correct;f.revision++;f.method="手動で判定を変更";f.reason="確認のうえ判定を変更しました。学習履歴・復習予定にも反映しています。";f.proficiency=this.profile(row.id);
+      this.save(s);return f;
     }
     route(path,data={}) {
       if(path==="state")return this.state();
       if(path==="start")return this.start();
       if(path==="answer")return this.answer(data);
-      if(path==="next"){const s=this.active();if(s?.feedback?.token===data.token){s.feedback=null;this.space(s);this.save(s);}return {ok:true};}
+      if(path==="answer/override")return this.override(data);
+      if(path==="next"){const s=this.active();if(s?.feedback?.token===data.token){s.feedback=null;delete s.answer_undo;this.space(s);this.save(s);}return {ok:true};}
       if(path==="words")return [...this.t.words.map(r=>({...r,data:wordData(r),retention:r.last_seen?Math.round(100*Math.exp(Math.log(.9)*Math.max(0,(Date.parse(this.day)-Date.parse(r.last_seen))/86400000)/Math.max(1,r.interval))):null,proficiency:this.profile(r.id)})),...this.t.csv_pending.map(r=>({...r,data:wordData(r),pending:true,source:"CSV・補完待ち",due:null,retention:null}))];
       if(path==="level"){if(!Object.hasOwn(levels,data.level))fail("難易度が不正です。");this.t.settings[0].level=data.level;return {message:"保存済み教材から難易度を選びました。"};}
       if(path==="study-mode"){if(!["auto","en_ja","ja_en"].includes(data.mode))fail("この出題形式は利用できません。");this.setPref("study_mode",data.mode);return {message:"次の学習から出題形式を変更します。"};}
