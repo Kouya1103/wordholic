@@ -161,7 +161,34 @@
       f.original_correct ??= f.correct;f.correct=data.correct;f.revision++;f.method="手動で判定を変更";f.reason="確認のうえ判定を変更しました。学習履歴・復習予定にも反映しています。";f.proficiency=this.profile(row.id);
       this.save(s);return f;
     }
+    manage(path,data) {
+      const all=path==="data/clear",reset=path==="data/reset-history";
+      if(data.confirm!==(all?"DELETE ALL":reset?"RESET HISTORY":"DELETE WORD"))fail("削除・リセットの確認が必要です。");
+      if(all){for(const k of tables)this.t[k]=[];this.t.settings=[{id:1,level:"basic"}];this.t.preferences=[{key:"study_mode",value:"auto"}];}
+      else if(reset){for(const k of ["sessions","assessments","exposures","grade_cache"])this.t[k]=[];for(const r of this.t.words)Object.assign(r,{streak:0,interval:0,due:null,last_seen:null,lapses:0});}
+      else {
+        const target=[...this.t.words,...this.t.csv_pending].find(r=>r.id===data.id);if(!target)fail("削除対象の単語がありません。");
+        const active=this.active();if(data.token&&data.token!==(active?.feedback?.token|| (active?this.token(active):null)))fail("問題が更新されています。再確認してください。");
+        const name=wordData(target).word;
+        this.t.words=this.t.words.filter(r=>r.id!==data.id);this.t.csv_pending=this.t.csv_pending.filter(r=>r.id!==data.id);this.t.assessments=this.t.assessments.filter(r=>r.word_id!==data.id);this.t.grade_cache=[];
+        this.t.sessions=this.t.sessions.filter(r=>{
+          const s=wordData(r),old=s.queue.slice(),shift=n=>old.slice(0,n).filter(id=>id!==data.id).length;
+          for(const a of this.t.assessments)if(a.session_day===s.day)a.cursor=shift(a.cursor);
+          s.cursor=shift(s.cursor);for(const k of ["base","queue","failed","mastered"])s[k]=s[k].filter(id=>id!==data.id);
+          s.first_correct=this.t.assessments.filter(a=>a.session_day===s.day&&a.cursor<s.base.length&&a.correct).length;
+          if(s.feedback?.word_id===data.id)s.feedback=null;else if(s.feedback)s.feedback.can_override=false;
+          if(old[JSON.parse(r.data).cursor]===data.id)s.typo_check=null;
+          delete s.answer_undo;if(s.modes)delete s.modes[data.id];r.data=JSON.stringify(s);return s.base.length>0;
+        });
+        const referenced=[...this.t.words,...this.t.csv_pending].some(r=>{const w=wordData(r);return [w.word,...w.synonyms.map(x=>x.word),...w.forms.map(x=>x.word)].includes(name);});
+        if(!referenced)for(const k of ["pronunciations","dictionary_cache","exposures"])this.t[k]=this.t[k].filter(r=>r.word!==name);
+      }
+      this.setPref("restore_nonce",Date.now().toString(36)+Math.random().toString(36).slice(2));
+      for(const r of this.t.sessions){const s=wordData(r);if(s.feedback)s.feedback.token=this.token(s,s.cursor-1);if(s.typo_check)s.typo_check.token=this.token(s);this.save(s);}
+      return {message:all?"単語・履歴・保存音声などをすべて削除しました。":reset?"教材・辞書情報は残し、学習履歴と復習予定をリセットしました。":"単語とその学習履歴を削除しました。"};
+    }
     route(path,data={}) {
+      if(path==="data/clear"||path==="data/reset-history"||path==="word/delete")return this.manage(path,data);
       if(path==="state")return this.state();
       if(path==="start")return this.start();
       if(path==="answer")return this.answer(data);
@@ -201,7 +228,9 @@
         if(path!=="backup/restore"||data.confirm!=="REPLACE")fail("置き換えの確認が必要です。");state.recovery=state.backup;state.backup=parsed;
         const e=new Engine(parsed);e.setPref("restore_nonce",Date.now().toString(36)+Math.random().toString(36).slice(2));if(e.pref("study_mode")==="usage")e.setPref("study_mode","auto");
         for(const row of e.t.sessions){const s=wordData(row);if(s.cursor<s.queue.length)s.modes=Object.fromEntries(Object.entries(s.modes||{}).map(([k,v])=>[k,v==="usage"?"ja_en":v]));if(s.typo_check)s.typo_check.token=e.token(s);if(s.feedback)s.feedback.token=e.token(s,s.cursor-1);e.save(s);}return result;}
-      return new Engine(state.backup).route(path,data);
+      const result=new Engine(state.backup).route(path,data);
+      if(["data/clear","data/reset-history","word/delete"].includes(path))state.recovery=null;
+      return result;
     });
   }
   globalThis.KotonohaLocal={api,Engine,validate,validWord,empty,transaction};

@@ -2,6 +2,34 @@
 // Shared by the server and portable editions. No paid services or remote TTS voices.
 let backupPayload = null;
 let preparedBackup = null;
+async function performDataAction(path,data) {
+  const result=await api(path,data);
+  backupPayload=null;preparedBackup=null;
+  $("#backup-restore").hidden=true;$("#backup-file").value="";$("#backup-preview").textContent="";
+  resetMaterial();csvPayload=null;$("#csv-import").hidden=true;
+  if(path==="data/clear") {
+    for(const id of ["#single-query","#single-word","#single-meaning","#search","#csv-file","#material-file"])$(id).value="";
+    for(const id of ["#single-gloss","#single-status","#single-dictionary","#single-candidates","#enrichment-status","#csv-preview","#csv-result"])$(id).textContent="";
+    $("#csv-preview").hidden=true;
+  }
+  sessionSnapshot=null;await refresh();await loadLibrary();
+  $("#data-action-status").textContent=result.message;tell(result.message);
+}
+for(const [selector,path,code,label] of [["#clear-all-data","data/clear","DELETE ALL","すべて削除"],["#reset-learning","data/reset-history","RESET HISTORY","履歴リセット"]]) {
+  $(selector).addEventListener("click",event=>busy(event.currentTarget,async()=>{
+    if(!window.confirm(`確認1/3：「${label}」を実行しますか？必要なら先に完全バックアップを書き出してください。`))return;
+    if(!window.confirm(`確認2/3：${path==="data/clear"?"単語・履歴・音声・辞書情報・設定をすべて削除します。":"教材は残しますが、学習履歴・復習予定・途中の問題を消去します。"}アプリ内の復元前バックアップも削除します。続けますか？`))return;
+    if(window.prompt(`最終確認3/3：実行するには「${label}」と入力してください。元に戻すには保存済みの外部バックアップが必要です。`)!==label)return;
+    await performDataAction(path,{confirm:code});
+  }));
+}
+document.addEventListener("click",event=>{
+  const button=event.target.closest(".delete-study-word");if(!button)return;
+  busy(button,async()=>{
+    if(!window.confirm(`「${button.dataset.word}」のこの単語カードと学習履歴を削除しますか？出題中の問題からも取り除きます。アプリ内の復元前バックアップも削除されます。元に戻すには外部バックアップが必要です。`))return;
+    await performDataAction("word/delete",{id:button.dataset.id,token:button.dataset.token,confirm:"DELETE WORD"});
+  });
+});
 function saveDownload(blob, name) {
   const url = URL.createObjectURL(blob), link = document.createElement("a");
   link.href = url; link.download = name; document.body.append(link); link.click(); link.remove();
