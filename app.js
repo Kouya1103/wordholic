@@ -188,11 +188,12 @@ function renderStudy() {
       <p class="feedback-word" lang="en">${escapeHTML(f.word.word)}</p><p class="meaning"><span class="pill">${escapeHTML(f.word.pos)}</span>${escapeHTML(f.word.meaning)}</p>
       <p class="small muted">あなたの回答：${escapeHTML(f.answer || "わからない")}</p>${f.original_answer ? `<p class="small muted">確認前の回答：${escapeHTML(f.original_answer)}</p>` : ""}<p class="feedback-reason">${escapeHTML(f.reason)}</p><p class="small muted">次の復習：${escapeHTML(f.next_due)}</p>
       ${!f.can_override ? '<p class="small muted">旧版で採点したこの回答は変更できません。次の回答から判定変更を利用できます。</p>' : ""}
-      ${notesHTML(f.word, f.word_id)}<p class="small muted">解説：${escapeHTML(f.source)}</p><p class="small muted">ここで見た類義語・関連語は、原則10問ほど間隔を空けます。候補が少ない場合は可能な範囲で後ろへ回します。</p>`;
+      ${notesHTML(f.word, f.word_id)}<p class="small muted">解説：${escapeHTML(f.source)}</p><p class="small muted">ここで見た類義語・関連語は、原則10問ほど間隔を空けます。候補が少ない場合は可能な範囲で後ろへ回します。</p>
+      <div class="next-row"><button id="next-bottom" class="button primary">${s.done ? "学習結果を見る" : "次の問題へ"} →</button></div>`;
     for (const [id, correct] of [["#mark-correct", true], ["#mark-wrong", false]]) {
       $(id).addEventListener("click", async event => {
         if (!window.confirm(`この回答を${correct ? "正解" : "不正解"}に変更しますか？学習履歴・習得段階・復習予定と再出題にも反映します。`)) return;
-        const buttons = Array.from(card.querySelectorAll(".feedback-actions button"));
+        const buttons = Array.from(card.querySelectorAll(".feedback-actions button, #next-bottom"));
         await busy(event.currentTarget, async () => {
           buttons.forEach(b => { b.disabled = true; });
           try { await api("answer/override", {token:f.token, revision:f.revision, correct, confirm:true}); }
@@ -200,11 +201,21 @@ function renderStudy() {
         }, "変更中…");
       });
     }
-    $("#next").addEventListener("click", event => busy(event.currentTarget, async () => {
-      await api("next", {token: f.token});
-      await refresh();
-      if (window.innerWidth < 650) $("#study-card").scrollIntoView({behavior: "smooth", block: "start"});
-    }));
+    let advancing = false;
+    for (const id of ["#next", "#next-bottom"]) $(id).addEventListener("click", async event => {
+      if (advancing) return;
+      advancing = true;
+      const buttons = Array.from(card.querySelectorAll(".feedback-actions button, #next-bottom"));
+      const disabled = buttons.map(button => button.disabled);
+      try {
+        await busy(event.currentTarget, async () => {
+          buttons.forEach(button => { button.disabled = true; });
+          await api("next", {token: f.token});
+          await refresh();
+          if (window.innerWidth < 650) $("#study-card").scrollIntoView({behavior: "smooth", block: "start"});
+        });
+      } finally { buttons.forEach((button, i) => { button.disabled = disabled[i]; }); advancing = false; }
+    });
     $("#next").focus({preventScroll: true});
     return;
   }
