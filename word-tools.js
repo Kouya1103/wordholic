@@ -12,7 +12,7 @@
     }).filter(r => Number.isFinite(r.score)).sort((a,b) => a.score-b.score || a.word.localeCompare(b.word)).slice(0,30);
   }
   function incomplete(w) {
-    return ["pos","meaning","example","translation","synonyms","forms","collocations","nuance"].filter(k => Array.isArray(w[k]) ? !w[k].length : typeof w[k] !== "string" || !w[k].trim());
+    return ["pos","meaning","example","translation","synonyms","forms","collocations","nuance","mnemonic"].filter(k => Array.isArray(w[k]) ? !w[k].length : typeof w[k] !== "string" || !w[k].trim());
   }
   function shortMeaning(meaning, query="") {
     const parts=meaning.split(/\s+\/\s+|[;；,、]/).map(p=>p.replace(/\{[^}]*\}|〈[^〉]*〉|《[^》]*》|[『』]/g,"").replace(/^[…\.]+を?/,"").trim());

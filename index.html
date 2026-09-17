@@ -69,7 +69,7 @@
         </section>
         <section class="panel"><h2>会話型AIで作った教材を取り込む</h2>
           <button id="enrichment-download" class="button secondary">不足している解説＋AIへの命令文をダウンロード</button><p id="enrichment-status" role="status"></p>
-          <p class="small muted">全難易度・CSV補完待ちを対象に、例文・和訳・類義語・語形・コロケーション・ニュアンスの空欄を抽出します。該当する類義語・語形がない語も再び対象になります。学習履歴・アカウント情報は含めません。単語一覧は含むので内容を確認し、ご自身で会話型AIに渡してください。返されたJSONは「同じ単語・品詞の教材を更新する」を選んで読み込みます。</p>
+          <p class="small muted">全難易度・CSV補完待ちを対象に、例文・和訳・類義語・語形・コロケーション・ニュアンス・覚え方の空欄を抽出します。該当する類義語・語形がない語も再び対象になります。学習履歴・アカウント情報は含めません。単語一覧は含むので内容を確認し、ご自身で会話型AIに渡してください。返されたJSONは「同じ単語・品詞の教材を更新する」を選んで読み込みます。</p>
           <p><a href="./material-prompt.txt" download>① 教材作成の命令文をダウンロード</a> · <a href="./material-example.json" download>完成例JSON</a></p>
           <p class="small muted">命令文と単語一覧・CSVを会話型AIへ渡し、生成されたJSONを下で選んでください。このアプリからAIには接続しません。会話型AI側でも有料機能を使わないでください。</p>
           <form id="material-form"><label for="material-file">② 教材JSON（64MB以下）</label><input id="material-file" type="file" accept=".json,application/json" required>
