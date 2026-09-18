@@ -102,14 +102,14 @@
       const s=this.active();let view=null;
       if(s){view={day:s.day,level:s.level,first_correct:s.first_correct,feedback:s.feedback,early_reviews:s.early_reviews,typo_check:s.typo_check||null,total:s.base.length,base_done:Math.min(s.cursor,s.base.length),attempts:s.cursor,retry_remaining:s.failed.filter(id=>!s.mastered.includes(id)).length,mastered:s.mastered.length,done:s.cursor>=s.queue.length,retry:s.cursor>=s.base.length,question:null};
         if(!view.done&&!s.feedback){const row=this.t.words.find(r=>r.id===s.queue[s.cursor]),w=wordData(row),mode=s.modes?.[row.id]||"en_ja";view.question={word:mode!=="ja_en"?w.word:"",example:mode==="en_ja"?w.example:"",meaning:mode!=="en_ja"?w.meaning:"",mode,id:row.id,pos:mode!=="en_ja"?w.pos:"",letter_count:w.word.length,token:this.token(s)};}}
-      return {today:this.day,level,levels,pos,counts,due:this.t.words.filter(r=>r.level===level&&r.due&&r.due<=this.day).length,studied:this.t.words.filter(r=>r.last_seen).length,total_words:this.t.words.length,pending_words:this.t.csv_pending.length,stages,modes,study_mode:this.pref("study_mode","auto"),ai_enabled:false,model:"",job:{running:false,message:"",added:0,error:""},session:view};
+      return {today:this.day,level,levels,pos,counts,due:this.t.words.filter(r=>r.due&&r.due<=this.day).length,studied:this.t.words.filter(r=>r.last_seen).length,total_words:this.t.words.length,pending_words:this.t.csv_pending.length,stages,modes,study_mode:this.pref("study_mode","auto"),ai_enabled:false,model:"",job:{running:false,message:"",added:0,error:""},session:view};
     }
     start() {
       if(this.active())return {message:"学習を再開します。"};
       const level=this.t.settings[0].level,seen=new Set(this.t.exposures.filter(r=>r.seen_day===this.day).map(r=>r.word));
       const rank=r=>r.due&&r.due<=this.day?0:!r.due?1:2;
-      const rows=this.t.words.filter(r=>r.level===level).sort((a,b)=>Number(seen.has(wordData(a).word))-Number(seen.has(wordData(b).word))||rank(a)-rank(b)||(a.due||"").localeCompare(b.due||"")||a.id.localeCompare(b.id)).slice(0,100);
-      if(!rows.length)fail("この難易度の教材がありません。教材またはバックアップを取り込んでください。");
+      const rows=this.t.words.slice().sort((a,b)=>Number(seen.has(wordData(a).word))-Number(seen.has(wordData(b).word))||rank(a)-rank(b)||(a.due||"").localeCompare(b.due||"")||a.id.localeCompare(b.id)).slice(0,100);
+      if(!rows.length)fail("教材がありません。教材またはバックアップを取り込んでください。");
       const base=rows.map(r=>r.id),mode=this.pref("study_mode","auto");
       this.save({day:this.day,level,base,queue:base.slice(),cursor:0,failed:[],mastered:[],first_correct:0,feedback:null,early_reviews:rows.filter(r=>r.due>this.day).length,related_until:Object.fromEntries([...seen].map(w=>[w,10])),modes:Object.fromEntries(base.map(id=>[id,mode==="auto"?this.choose(id):mode]))});return {message:"学習を開始しました。"};
     }

@@ -148,14 +148,14 @@ document.addEventListener("play", event => {
 
 function renderStudy() {
   const s = state.session;
-  const snapshot = JSON.stringify([s, s ? null : [state.level, state.counts[state.level], state.ai_enabled, state.job.running]]);
+  const snapshot = JSON.stringify([s, s ? null : [state.total_words, state.ai_enabled, state.job.running]]);
   if (snapshot === sessionSnapshot) return;
   sessionSnapshot = snapshot;
   const card = $("#study-card");
   card.querySelectorAll("audio").forEach(audio => audio.pause());
   if (!s) {
-    const count = Math.min(100, state.counts[state.level]);
-    card.innerHTML = `<div class="welcome"><div class="welcome-mark">❧</div><h2>今日の学びを、はじめよう。</h2><p>復習することばと、新しく出会うことば。<br>ひとつずつ、自分のペースで覚えましょう。</p><p><span class="pill">${levelNames[state.level]} · 基本 ${count} 問</span></p>${count < 100 ? `<p>現在は${count}語です。${state.ai_enabled ? "100問で始めるには自動補充の完了をお待ちください。" : "AI接続で100語まで自動補充できます。"}</p>` : ""}<button id="start" class="button primary">${count < 100 ? `${count}問で学習をはじめる` : "今日の100問をはじめる"} <span aria-hidden="true">　→</span></button></div>`;
+    const count = Math.min(100, state.total_words);
+    card.innerHTML = `<div class="welcome"><div class="welcome-mark">❧</div><h2>今日の学びを、はじめよう。</h2><p>すべての単語から、復習することばと新しいことばを選びます。</p><p><span class="pill">難易度の区別なし · 基本 ${count} 問</span></p>${count < 100 ? `<p>現在は${count}語です。教材JSON・CSVや1語登録で追加できます。</p>` : ""}<button id="start" class="button primary" ${count ? "" : "disabled"}>${count < 100 ? `${count}問で学習をはじめる` : "今日の100問をはじめる"} <span aria-hidden="true">　→</span></button></div>`;
     $("#start").addEventListener("click", event => busy(event.currentTarget, async () => { await api("start", {}); await refresh(); }));
     return;
   }
@@ -263,10 +263,9 @@ function render() {
   $("#stat-bar").style.width = `${s ? s.base_done / s.total * 100 : 0}%`;
   $("#stat-due").textContent = state.due;
   $("#stat-retry").textContent = s ? s.retry_remaining : 0;
-  $("#session-label").textContent = s ? `${levelNames[s.level]} · ${s.day}${s.early_reviews ? ` · 先取り復習 ${s.early_reviews}語` : ""}` : "英単語 → 日本語";
-  $("#level").value = state.level;
+  $("#session-label").textContent = s ? `${s.day}${s.early_reviews ? ` · 先取り復習 ${s.early_reviews}語` : ""}` : "すべての単語から出題";
   $("#study-mode").value = state.study_mode || "auto";
-  $("#level-count").textContent = `登録済み ${state.counts[state.level]} 語${!state.ai_enabled ? " · ローカル採点" : ""}`;
+  $("#level-count").textContent = `学習可能 ${state.total_words} 語 · 補完待ち ${state.pending_words} 語`;
   $("#fill").disabled = state.job.running;
   $("#fill").textContent = state.job.running ? "単語を準備しています…" : state.counts[state.level] < 100 ? "＋ 100語まで自動補充" : "＋ 新しい20語を補充";
   $("#ai-label").textContent = state.ai_enabled ? "AI設定あり" : "外部APIなし · 保存教材で学習";
@@ -387,14 +386,6 @@ async function showPage(name) {
 document.querySelectorAll("[data-page]").forEach(button => button.addEventListener("click", () => showPage(button.dataset.page)));
 $("#search").addEventListener("input", renderLibrary);
 $("#library-level").addEventListener("change", renderLibrary);
-$("#level").addEventListener("change", async event => {
-  const level = event.target.value;
-  try {
-    const result = await api("level", {level});
-    tell(result.message);
-    await refresh();
-  } catch (error) { tell(error.message, true); }
-});
 $("#fill").addEventListener("click", event => busy(event.currentTarget, async () => {
   if (!state.ai_enabled) { await showPage("settings"); tell("単語の自動補充にはAPIキーを設定してください。"); return; }
   const result = await api("level", {level: state.level, fill: state.counts[state.level] >= 100});
